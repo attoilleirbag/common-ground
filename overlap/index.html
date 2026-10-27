@@ -94,7 +94,7 @@ const ZONES=[["Auckland","Pacific/Auckland"],["Amsterdam","Europe/Amsterdam"],["
 const $=s=>document.querySelector(s);
 const KEY="overlap.v1";
 let st; try{st=JSON.parse(localStorage.getItem(KEY))}catch{}
-if(!st||!Array.isArray(st.cities)) st={cities:[{n:"London",s:9,e:17.5},{n:"New York",s:9,e:17.5},{n:"São Paulo",s:9,e:18},{n:"Singapore",s:9,e:18}],sel:null};
+if(!st||!Array.isArray(st.cities)) st={cities:[{n:"London",s:9,e:17.5},{n:"New York",s:9,e:17.5},{n:"São Paulo",s:9,e:18},{n:"Cape Town",s:9,e:17}],sel:null};
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch{}};
 const tz=n=>(ZONES.find(z=>z[0]===n)||[,"UTC"])[1];
 const now=new Date(); $("#date").value=new Date(now.getTime()-now.getTimezoneOffset()*6e4).toISOString().slice(0,10);
