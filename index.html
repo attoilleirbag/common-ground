@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Common Ground</title>
+<meta name="description" content="Free tools for sharing a life with other people: split costs, find a meeting time across time zones, and document a rental handover.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Manrope:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#f4f2ef;--panel:#fff;--ink:#1f1c1a;--muted:#67605a;--line:#ddd7d0;--a1:#6b3fa0;--a2:#2a9d8f;--a3:#225e8c;--serif:"Young Serif",Georgia,serif;--sans:"Manrope","Segoe UI",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#131110;--panel:#1c1917;--ink:#eee8e2;--muted:#a69d95;--line:#2f2a26;--a1:#b893e6;--a2:#3cc4b3;--a3:#7db4e0;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 var(--sans);padding:52px max(16px,env(safe-area-inset-right,0px)) 56px max(16px,env(safe-area-inset-left,0px))}
+main{max-width:900px;margin:0 auto}
+h1{font:400 clamp(40px,8vw,72px)/1 var(--serif);margin:0 0 14px;letter-spacing:-.01em}
+.lede{color:var(--muted);max-width:56ch;margin:0 0 34px;font-size:17px}
+.tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+a.tool{display:grid;gap:8px;align-content:start;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;border-top:5px solid var(--c)}
+a.tool:hover,a.tool:focus-visible{border-color:var(--c);outline:none}
+a.tool h2{margin:0;font:400 26px var(--serif)}
+a.tool p{margin:0;color:var(--muted);font-size:15px}
+a.tool span{font-weight:600;color:var(--c);font-size:14px;margin-top:6px}
+footer{margin-top:32px;font-size:13px;color:var(--muted)} footer a{color:inherit}
+</style>
+</head>
+<body>
+<main>
+  <h1>Common Ground</h1>
+  <p class="lede">Small, free tools for the practical side of sharing life with other people: money, time and the place you live. No accounts, no tracking, and what you enter stays on your device.</p>
+  <div class="tools">
+    <a class="tool" href="tally/" style="--c:var(--a1)"><h2>Tally</h2><p>Split costs for a trip or a shared house and get the fewest payments that settle everyone up.</p><span>Open Tally →</span></a>
+    <a class="tool" href="overlap/" style="--c:var(--a2)"><h2>Overlap</h2><p>Find a meeting time that works across cities, with daylight saving handled for the real date.</p><span>Open Overlap →</span></a>
+    <a class="tool" href="handover/" style="--c:var(--a3)"><h2>Handover</h2><p>Document a rental move-in or move-out room by room, with dated photos, and save it as a PDF.</p><span>Open Handover →</span></a>
+  </div>
+  <footer>Also by the same author: <a href="https://attoilleirbag.github.io/border-kit/">Border Kit</a>, tools for travelling and living across European borders.</footer>
+</main>
+</body>
+</html>

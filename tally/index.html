@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tally</title>
+<meta name="description" content="Split shared expenses for a trip or a household and see the fewest payments that settle everyone up.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Manrope:wght@400;500;600;700&family=Martian+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: expense entry and ledger on the left; balances and settle-up plan on the right */
+:root{
+  --bg:#f5f3f7; --panel:#fff; --ink:#221c2e; --muted:#6a6178; --line:#e0dbe6;
+  --accent:#6b3fa0; --accent-soft:#efe7f8; --plus:#1f7a52; --minus:#b43a3a;
+  --serif:"Young Serif", Georgia, serif; --sans:"Manrope", "Segoe UI", system-ui, sans-serif; --mono:"Martian Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#141019; --panel:#1d1724; --ink:#ece6f3; --muted:#a59cb3; --line:#2f2738;
+  --accent:#b893e6; --accent-soft:#2c2140; --plus:#5fd29b; --minus:#f08b8b; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15.5px/1.5 var(--sans);
+  padding:32px max(16px,env(safe-area-inset-right,0px)) 56px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1080px;margin:0 auto}
+h1{font:400 clamp(40px,7vw,64px)/1 var(--serif);margin:0;letter-spacing:-.01em}
+.lede{color:var(--muted);max-width:60ch;margin:10px 0 24px}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;min-width:0}
+h2{font:400 22px var(--serif);margin:0 0 14px}
+.label{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+input,select{font:500 15px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;width:100%;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:600 14px var(--sans);border-radius:9px;padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+.people{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.person{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border-radius:999px;padding:5px 6px 5px 12px;font-weight:600}
+.person button{border:0;background:none;padding:0 4px;font-size:17px;color:var(--muted)}
+.addp{display:flex;gap:6px}.addp input{width:150px}
+.form{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr);gap:10px;margin-bottom:10px}
+@media (max-width:560px){.form{grid-template-columns:1fr 1fr}.form .desc{grid-column:1/-1}}
+.among{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
+.among label{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:14px;cursor:pointer}
+.among input{width:auto;accent-color:var(--accent)}
+.ledger{list-style:none;padding:0;margin:16px 0 0;display:grid}
+.ledger li{display:grid;grid-template-columns:minmax(0,1fr) auto 28px;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.ledger .what{font-weight:600}
+.ledger small{display:block;color:var(--muted);font-weight:400}
+.amt{font:500 14px var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.ledger .x{border:0;background:none;padding:0;font-size:18px;color:var(--muted)}
+.total{display:flex;justify-content:space-between;padding-top:12px;border-top:2px solid var(--ink);font-weight:700;margin-top:4px}
+.bal{display:grid;gap:8px;margin-bottom:22px}
+.brow{display:grid;grid-template-columns:90px minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:14.5px}
+.track{position:relative;height:10px;background:var(--bg);border-radius:5px}
+.track::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line)}
+.track span{position:absolute;top:0;bottom:0;border-radius:5px}
+.pos{color:var(--plus)}.neg{color:var(--minus)}
+.plan{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.plan li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--accent-soft);border-radius:12px;padding:12px 14px}
+.plan .who{font-weight:600}.plan .who span{color:var(--muted);font-weight:500;margin:0 6px}
+.plan .amt{font-size:16px;font-weight:600;color:var(--accent)}
+.done{color:var(--muted);padding:8px 0}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;align-items:center}
+.note{font-size:13px;color:var(--muted)}
+.example{font:500 10.5px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:3px 7px}
+footer{margin-top:28px;font-size:13px;color:var(--muted)}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Tally</h1>
+<p class="lede">Shared trip or shared house? Log who paid for what, and Tally works out the fewest payments that settle everyone up. Everything stays in this browser.</p>
+
+<div class="top panel">
+  <span class="label">People</span>
+  <div class="people" id="people"></div>
+  <form class="addp" id="addp"><input id="pname" placeholder="Add a person" aria-label="Name"><button type="submit">Add</button></form>
+  <span style="flex:1"></span>
+  <label class="label" for="cur">Currency</label>
+  <select id="cur" style="width:auto"><option>EUR</option><option>GBP</option><option>USD</option><option>BRL</option><option>ZAR</option><option>CHF</option><option>PLN</option><option>CZK</option></select>
+</div>
+
+<div class="grid">
+<section class="panel">
+  <h2>Expenses <span class="example" id="ex" hidden>Example</span></h2>
+  <form id="add">
+    <div class="form">
+      <label class="desc"><span class="label">What</span><input id="d" placeholder="Groceries" required></label>
+      <label><span class="label">Amount</span><input id="a" type="number" min="0.01" step="0.01" placeholder="0.00" required></label>
+      <label><span class="label">Paid by</span><select id="p"></select></label>
+    </div>
+    <span class="label">Split between</span>
+    <div class="among" id="among"></div>
+    <button class="primary" type="submit">Add expense</button>
+  </form>
+  <ul class="ledger" id="ledger"></ul>
+  <div class="total" id="total"></div>
+</section>
+
+<section class="panel">
+  <h2>Who's up, who's down</h2>
+  <div class="bal" id="bal"></div>
+  <h2>Settle up</h2>
+  <ul class="plan" id="plan"></ul>
+  <div class="actions">
+    <button id="copy" type="button">Copy summary</button>
+    <button id="reset" type="button">Start a new tally</button>
+    <span class="note" id="msg" role="status"></span>
+  </div>
+</section>
+</div>
+<footer>Part of <a href="../">Common Ground</a>. Amounts are rounded to the cent; any leftover cent goes to the first person in the split.</footer>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const KEY="tally.v1";
+const EX={cur:"EUR",people:["Ana","Ben","Chiara","Dev"],ex:true,items:[
+ {d:"Apartment, 3 nights",a:540,p:"Ana",s:["Ana","Ben","Chiara","Dev"]},
+ {d:"Ferry tickets",a:96,p:"Ben",s:["Ana","Ben","Chiara","Dev"]},
+ {d:"Dinner at the konoba",a:132.4,p:"Chiara",s:["Ana","Ben","Chiara","Dev"]},
+ {d:"Boat trip",a:120,p:"Dev",s:["Ben","Chiara","Dev"]},
+ {d:"Groceries",a:47.8,p:"Ana",s:["Ana","Chiara"]}]};
+let st; try{st=JSON.parse(localStorage.getItem(KEY))}catch{}
+if(!st||!Array.isArray(st.people)) st=JSON.parse(JSON.stringify(EX));
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch{}};
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const money=c=>new Intl.NumberFormat("en-GB",{style:"currency",currency:st.cur}).format(c/100);
+const unEx=()=>{ if(st.ex){ st.ex=false; } };
+
+function balances(){
+  const b=Object.fromEntries(st.people.map(p=>[p,0]));
+  for(const it of st.items){
+    const cents=Math.round(it.a*100), s=it.s.filter(x=>x in b); if(!s.length||!(it.p in b)) continue;
+    b[it.p]+=cents; const share=Math.floor(cents/s.length); let rest=cents-share*s.length;
+    s.forEach(x=>{ b[x]-=share+(rest>0?1:0); rest--; });
+  }
+  return b;
+}
+function settle(b){
+  const cr=[],db=[];
+  for(const [p,v] of Object.entries(b)){ if(v>0) cr.push([p,v]); else if(v<0) db.push([p,-v]); }
+  cr.sort((x,y)=>y[1]-x[1]); db.sort((x,y)=>y[1]-x[1]);
+  const out=[]; let i=0,j=0;
+  while(i<db.length&&j<cr.length){ const m=Math.min(db[i][1],cr[j][1]); out.push([db[i][0],cr[j][0],m]); db[i][1]-=m; cr[j][1]-=m; if(!db[i][1])i++; if(!cr[j][1])j++; }
+  return out;
+}
+function render(){
+  $("#cur").value=st.cur; $("#ex").hidden=!st.ex;
+  $("#people").innerHTML=st.people.map((p,i)=>`<span class="person">${esc(p)}<button type="button" data-i="${i}" aria-label="Remove ${esc(p)}">×</button></span>`).join("")||'<span class="note">Add the people sharing costs.</span>';
+  const keepP=$("#p").value; $("#p").innerHTML=st.people.map(p=>`<option>${esc(p)}</option>`).join(""); if(st.people.includes(keepP)) $("#p").value=keepP;
+  $("#among").innerHTML=st.people.map((p,i)=>`<label><input type="checkbox" id="s${i}" value="${esc(p)}" checked>${esc(p)}</label>`).join("");
+  $("#ledger").innerHTML=st.items.map((it,i)=>`<li><div><div class="what">${esc(it.d)}</div><small>${esc(it.p)} paid · split ${it.s.length===st.people.length?"between everyone":"between "+it.s.map(esc).join(", ")}</small></div><div class="amt">${money(Math.round(it.a*100))}</div><button class="x" type="button" data-i="${i}" aria-label="Remove ${esc(it.d)}">×</button></li>`).join("")||'<li class="done">No expenses yet. Add the first one above.</li>';
+  const tot=st.items.reduce((s,it)=>s+Math.round(it.a*100),0);
+  $("#total").innerHTML=`<span>Total spent</span><span class="amt">${money(tot)}</span>`;
+  const b=balances(), max=Math.max(1,...Object.values(b).map(Math.abs));
+  $("#bal").innerHTML=st.people.map(p=>{const v=b[p]||0,w=Math.abs(v)/max*50;return `<div class="brow"><strong>${esc(p)}</strong><div class="track"><span style="${v>=0?`left:50%;width:${w}%;background:var(--plus)`:`right:50%;width:${w}%;background:var(--minus)`}"></span></div><span class="amt ${v>0?"pos":v<0?"neg":""}">${v>0?"+":""}${money(v)}</span></div>`}).join("");
+  const plan=settle(b);
+  $("#plan").innerHTML=plan.map(([f,t,m])=>`<li><div class="who">${esc(f)}<span>pays</span>${esc(t)}</div><div class="amt">${money(m)}</div></li>`).join("")||'<li class="done" style="background:none">Everyone is square.</li>';
+  save();
+}
+$("#addp").onsubmit=e=>{e.preventDefault(); const n=$("#pname").value.trim(); if(!n||st.people.includes(n)) return; unEx(); st.people.push(n); $("#pname").value=""; render();};
+$("#people").onclick=e=>{const b=e.target.closest("button"); if(!b) return; const p=st.people[+b.dataset.i];
+  if(st.items.some(it=>it.p===p||it.s.includes(p))){ $("#msg").textContent=`${p} is in some expenses. Remove those first.`; return; }
+  st.people.splice(+b.dataset.i,1); render();};
+$("#add").onsubmit=e=>{e.preventDefault(); const s=[...document.querySelectorAll("#among input:checked")].map(i=>i.value);
+  if(!s.length){ $("#msg").textContent="Pick at least one person to split with."; return; }
+  unEx(); st.items.unshift({d:$("#d").value.trim(),a:+$("#a").value,p:$("#p").value,s}); $("#d").value=""; $("#a").value=""; $("#msg").textContent=""; render(); $("#d").focus();};
+$("#ledger").onclick=e=>{const b=e.target.closest(".x"); if(!b) return; st.items.splice(+b.dataset.i,1); render();};
+$("#cur").onchange=e=>{st.cur=e.target.value; render();};
+let armed=false;
+$("#reset").onclick=e=>{ if(!armed){ armed=true; e.target.textContent="Tap again to clear everything"; setTimeout(()=>{armed=false;e.target.textContent="Start a new tally"},3000); return; }
+  st={cur:st.cur,people:[],items:[],ex:false}; armed=false; e.target.textContent="Start a new tally"; render(); };
+$("#copy").onclick=async()=>{ const b=balances(), plan=settle(b);
+  const t=["Tally summary",`Total spent: ${money(st.items.reduce((s,it)=>s+Math.round(it.a*100),0))}`,"",...plan.map(([f,to,m])=>`${f} pays ${to} ${money(m)}`)].join("\n")+(plan.length?"":"\nEveryone is square.");
+  try{await navigator.clipboard.writeText(t); $("#msg").textContent="Copied. Paste it into your group chat.";}catch{$("#msg").textContent="Couldn't copy here. Select the payments above instead.";} };
+render();
+</script>
+</body>
+</html>

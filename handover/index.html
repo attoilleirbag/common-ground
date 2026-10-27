@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Handover</title>
+<meta name="description" content="Room-by-room move-in and move-out condition report with dated photos, meter readings and keys, ready to save as a PDF.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a report document. Header block, then one section per room with a condition table and a photo strip; signature block at the end. Prints as the same document. */
+:root{
+  --bg:#eceef0; --sheet:#ffffff; --ink:#1d2329; --muted:#5f6973; --line:#d6dbe0;
+  --accent:#225e8c; --good:#2f7d4f; --fair:#a8730c; --bad:#b03a2e; --soft:#f4f6f8;
+  --display:"Fraunces", Georgia, serif; --sans:"Public Sans", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0f1316; --sheet:#171d22; --ink:#e4e9ee; --muted:#9aa6b1; --line:#2a333b;
+  --accent:#7db4e0; --good:#6fcf97; --fair:#e3b04b; --bad:#f08a7e; --soft:#1e252b; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans);
+  padding:28px max(16px,env(safe-area-inset-right,0px)) 56px max(16px,env(safe-area-inset-left,0px))}
+.toolbar{max-width:900px;margin:0 auto 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.toolbar .brand{font:800 22px var(--display);margin-right:auto}
+.toolbar .brand a{color:inherit;text-decoration:none}
+button{font:600 14px var(--sans);border-radius:8px;padding:9px 14px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--sheet)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sheet{max-width:900px;margin:0 auto;background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:clamp(18px,4vw,44px)}
+h1{font:800 clamp(30px,5vw,44px)/1.05 var(--display);margin:0 0 4px;letter-spacing:-.01em}
+.kind{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;margin:10px 0 22px}
+.kind button{border:0;border-radius:999px;padding:6px 14px;background:none;color:var(--muted)}
+.kind button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 18px;margin-bottom:22px}
+label.f{display:grid;gap:3px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+input,select,textarea{font:500 15px var(--sans);color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%;min-width:0;text-transform:none;letter-spacing:0}
+textarea{min-height:60px;resize:vertical}
+h2{font:600 22px var(--display);margin:0;display:flex;gap:10px;align-items:baseline;justify-content:space-between}
+h2 input{font:600 22px var(--display);background:none;border:0;border-bottom:1px dashed var(--line);border-radius:0;padding:2px 0}
+.room{border-top:2px solid var(--ink);padding-top:16px;margin-top:26px}
+.room .tally{font:600 12px var(--sans);color:var(--muted);white-space:nowrap}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin-top:10px;min-width:520px}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:6px;border-bottom:1px solid var(--line)}
+td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+td:first-child{font-weight:600;width:28%}
+td select{width:auto}
+td.c-Good select{color:var(--good)} td.c-Fair select{color:var(--fair)} td.c-Damaged select{color:var(--bad);font-weight:700}
+.rm{border:0;background:none;color:var(--muted);font-size:17px;padding:0 4px}
+.addrow{display:flex;gap:8px;margin-top:8px}
+.addrow input{max-width:240px}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+figure{margin:0;position:relative}
+figure img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;display:block;border:1px solid var(--line)}
+figcaption{font-size:11.5px;color:var(--muted);margin-top:3px}
+figure .rm{position:absolute;top:4px;right:4px;background:var(--sheet);border-radius:6px;opacity:.9}
+.upload{display:inline-flex;gap:8px;align-items:center;margin-top:10px;font-size:14px;color:var(--muted)}
+.upload input{width:auto;background:none;border:0;padding:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 18px;margin-top:10px}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:20px}
+.sign div{border-top:1px solid var(--ink);padding-top:6px;font-size:13px;color:var(--muted);min-height:70px}
+.summary{background:var(--soft);border-radius:8px;padding:12px 14px;font-size:14px;margin-bottom:6px}
+.summary strong{color:var(--bad)}
+.note{font-size:13px;color:var(--muted)}
+.actions-room{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+@media print{
+  body{background:#fff;color:#000;padding:0;font-size:11pt}
+  .toolbar,.no-print,.rm,.addrow,.upload,.actions-room,.kind button[aria-pressed="false"]{display:none!important}
+  .sheet{border:0;padding:0;max-width:none;background:#fff}
+  input,select,textarea{border:0;background:none;padding:0;color:#000;appearance:none;-webkit-appearance:none}
+  .kind{border:0;padding:0;margin:4px 0 14px}.kind button{background:none!important;color:#000!important;padding:0;font-size:13pt}
+  .room{break-inside:avoid-page}
+  figure{break-inside:avoid}
+  .photos{grid-template-columns:repeat(3,1fr)}
+  table{min-width:0}
+}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <span class="brand"><a href="../">Common Ground</a> / Handover</span>
+  <button id="addRoom" type="button">Add a room</button>
+  <button id="newRep" type="button">New report</button>
+  <button class="primary" id="print" type="button">Save as PDF</button>
+</div>
+
+<article class="sheet">
+  <h1>Property condition report</h1>
+  <div class="kind" role="group" aria-label="Report type"><button type="button" data-k="in">Move-in</button><button type="button" data-k="out">Move-out</button></div>
+  <p class="no-print note" style="margin:-12px 0 18px">Walk through each room, mark the condition, and add photos as you go. The report saves in this browser, photos included, until you start a new one. Use "Save as PDF" and send the file to the other party the same day.</p>
+  <div id="sumbox" class="summary no-print"></div>
+  <div class="meta">
+    <label class="f">Address<input id="m-address" data-m="address" placeholder="Ulica 12, 21000 Split"></label>
+    <label class="f">Date<input id="m-date" data-m="date" type="date"></label>
+    <label class="f">Tenant<input id="m-tenant" data-m="tenant" placeholder="Full name"></label>
+    <label class="f">Landlord or agent<input id="m-landlord" data-m="landlord" placeholder="Full name"></label>
+  </div>
+  <div id="rooms"></div>
+
+  <section class="room">
+    <h2>Meters and keys</h2>
+    <div class="grid2">
+      <label class="f">Electricity reading<input id="m-elec" data-m="elec" inputmode="decimal"></label>
+      <label class="f">Water reading<input id="m-water" data-m="water" inputmode="decimal"></label>
+      <label class="f">Gas reading<input id="m-gas" data-m="gas" inputmode="decimal"></label>
+      <label class="f">Keys handed over<input id="m-keys" data-m="keys" placeholder="2 front door, 1 mailbox, 1 garage remote"></label>
+    </div>
+    <label class="f" style="margin-top:12px">Other notes<textarea id="m-notes" data-m="notes" placeholder="Inventory items, agreed repairs, anything else both sides should remember"></textarea></label>
+  </section>
+
+  <section class="room">
+    <h2>Signatures</h2>
+    <p class="note">Both parties confirm this report reflects the property's condition on the date above.</p>
+    <div class="sign"><div>Tenant signature and date</div><div>Landlord or agent signature and date</div></div>
+  </section>
+</article>
+
+<script>
+const $=s=>document.querySelector(s);
+const ITEMS=["Walls","Floor","Ceiling","Windows and frames","Doors and handles","Lights and sockets","Heating and air conditioning"];
+const EXTRA={"Kitchen":["Cooker and oven","Fridge and freezer","Sink and taps","Cupboards and worktops","Dishwasher"],"Bathroom":["Toilet","Shower or bath","Sink and taps","Tiles and grout","Mirror and cabinet","Extractor fan"],"Bedroom":["Wardrobe","Bed and mattress","Curtains or blinds"],"Living room":["Sofa and chairs","Table","Curtains or blinds"],"Entrance":["Front door and lock","Intercom or doorbell"]};
+const mkRoom=n=>({n,items:[...ITEMS,...(EXTRA[n]||[])].map(i=>({i,c:"Good",note:""})),photos:[]});
+const fresh=()=>({kind:"in",meta:{date:new Date().toISOString().slice(0,10)},rooms:["Entrance","Living room","Kitchen","Bathroom","Bedroom"].map(mkRoom)});
+let st=fresh();
+
+// IndexedDB store (photos are too large for localStorage)
+let db=null;
+function openDB(){ return new Promise(r=>{ try{ const q=indexedDB.open("handover",1); q.onupgradeneeded=()=>q.result.createObjectStore("kv"); q.onsuccess=()=>{db=q.result;r()}; q.onerror=()=>r(); }catch{r()} }); }
+function load(){ return new Promise(r=>{ if(!db) return r(null); try{ const g=db.transaction("kv").objectStore("kv").get("report"); g.onsuccess=()=>r(g.result||null); g.onerror=()=>r(null);}catch{r(null)} }); }
+let t; function save(){ clearTimeout(t); t=setTimeout(()=>{ try{ db&&db.transaction("kv","readwrite").objectStore("kv").put(st,"report"); }catch{} },300); }
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function render(){
+  document.querySelectorAll("[data-m]").forEach(el=>el.value=st.meta[el.dataset.m]||"");
+  document.querySelectorAll(".kind button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===st.kind));
+  $("#rooms").innerHTML=st.rooms.map((r,ri)=>{
+    const bad=r.items.filter(x=>x.c==="Damaged").length;
+    return `<section class="room" data-ri="${ri}">
+      <h2><input id="rn${ri}" data-rn="${ri}" value="${esc(r.n)}" aria-label="Room name"><span class="tally">${r.items.length} items · ${bad?bad+" damaged":"no damage"} · ${r.photos.length} photo${r.photos.length===1?"":"s"}</span></h2>
+      <div class="tablewrap"><table><thead><tr><th>Item</th><th>Condition</th><th>Notes</th><th class="no-print"></th></tr></thead><tbody>
+      ${r.items.map((x,ii)=>`<tr><td>${esc(x.i)}</td><td class="c-${x.c}"><select id="c${ri}-${ii}" data-ri="${ri}" data-ii="${ii}" data-k="c">${["Good","Fair","Damaged","Not present"].map(o=>`<option${o===x.c?" selected":""}>${o}</option>`).join("")}</select></td><td><input id="n${ri}-${ii}" data-ri="${ri}" data-ii="${ii}" data-k="note" value="${esc(x.note)}" placeholder="—"></td><td class="no-print"><button class="rm" type="button" data-del-item="${ri}-${ii}" aria-label="Remove ${esc(x.i)}">×</button></td></tr>`).join("")}
+      </tbody></table></div>
+      <form class="addrow" data-add="${ri}"><input id="ai${ri}" placeholder="Add an item, e.g. Balcony door"><button type="submit">Add</button></form>
+      <div class="photos">${r.photos.map((p,pi)=>`<figure><img src="${p.src}" alt="${esc(r.n)} photo ${pi+1}"><figcaption>${esc(r.n)} · ${esc(p.when)}</figcaption><button class="rm" type="button" data-del-photo="${ri}-${pi}" aria-label="Remove photo">×</button></figure>`).join("")}</div>
+      <div class="actions-room"><label class="upload">Add photos <input type="file" accept="image/*" multiple data-photo="${ri}"></label><button type="button" data-del-room="${ri}">Remove room</button></div>
+    </section>`;}).join("");
+  const bad=st.rooms.flatMap(r=>r.items.filter(x=>x.c==="Damaged").map(x=>`${x.i} (${r.n})`));
+  const ph=st.rooms.reduce((s,r)=>s+r.photos.length,0);
+  $("#sumbox").innerHTML=`${st.rooms.length} rooms · ${ph} photos · ${bad.length?`<strong>${bad.length} damaged:</strong> ${bad.map(esc).join(", ")}`:"nothing marked damaged"}`;
+}
+function shrink(file){ return new Promise(res=>{ const url=URL.createObjectURL(file), img=new Image(); img.onload=()=>{ const k=Math.min(1,1400/Math.max(img.width,img.height)); const c=document.createElement("canvas"); c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext("2d").drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url);
+  res({src:c.toDataURL("image/jpeg",.8),when:new Date(file.lastModified||Date.now()).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}); }; img.onerror=()=>{URL.revokeObjectURL(url);res(null)}; img.src=url; }); }
+
+document.addEventListener("input",e=>{ const el=e.target;
+  if(el.dataset.m){ st.meta[el.dataset.m]=el.value; save(); return; }
+  if(el.dataset.rn!==undefined){ st.rooms[+el.dataset.rn].n=el.value; save(); return; }
+  if(el.dataset.k){ const x=st.rooms[+el.dataset.ri].items[+el.dataset.ii]; x[el.dataset.k]=el.value; save(); if(el.dataset.k==="c"){ el.parentElement.className="c-"+el.value; render(); } } });
+document.addEventListener("change",async e=>{ const el=e.target; if(el.dataset.photo===undefined) return;
+  const r=st.rooms[+el.dataset.photo]; for(const f of el.files){ const p=await shrink(f); if(p) r.photos.push(p); } save(); render(); });
+document.addEventListener("submit",e=>{ const f=e.target; if(f.dataset.add===undefined) return; e.preventDefault(); const inp=f.querySelector("input"); if(!inp.value.trim()) return; st.rooms[+f.dataset.add].items.push({i:inp.value.trim(),c:"Good",note:""}); save(); render(); });
+document.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; const d=b.dataset;
+  if(d.k&&b.parentElement.classList.contains("kind")){ st.kind=d.k; save(); render(); }
+  else if(d.delItem){ const [ri,ii]=d.delItem.split("-").map(Number); st.rooms[ri].items.splice(ii,1); save(); render(); }
+  else if(d.delPhoto){ const [ri,pi]=d.delPhoto.split("-").map(Number); st.rooms[ri].photos.splice(pi,1); save(); render(); }
+  else if(d.delRoom!==undefined){ if(b.dataset.armed){ st.rooms.splice(+d.delRoom,1); save(); render(); } else { b.dataset.armed=1; b.textContent="Tap again to remove"; setTimeout(()=>{delete b.dataset.armed;b.textContent="Remove room"},3000);} } });
+$("#addRoom").onclick=()=>{ st.rooms.push(mkRoom("New room")); save(); render(); document.querySelector(`#rn${st.rooms.length-1}`).select(); };
+$("#newRep").onclick=e=>{ const b=e.target; if(b.dataset.armed){ st=fresh(); save(); render(); b.textContent="New report"; delete b.dataset.armed; } else { b.dataset.armed=1; b.textContent="Tap again to clear this report"; setTimeout(()=>{delete b.dataset.armed;b.textContent="New report"},3000);} };
+$("#print").onclick=()=>window.print();
+openDB().then(load).then(s=>{ if(s&&s.rooms) st=s; render(); });
+render();
+</script>
+</body>
+</html>

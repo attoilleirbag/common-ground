@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Overlap</title>
+<meta name="description" content="Find a meeting time that works across time zones, with daylight saving handled for the date you pick.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;800&family=Azeret+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: city rows stacked over one shared 24-hour axis; click a column to read the time everywhere */
+:root{
+  --bg:#f1f4f8; --panel:#fff; --ink:#0f1b2b; --muted:#5b6778; --line:#d9e0e8;
+  --night:#e6ebf2; --day:#ffffff; --work:#ffd166; --work-ink:#4a3600; --both:#2a9d8f; --both-ink:#ffffff; --sel:#0f1b2b;
+  --sans:"Hanken Grotesk", "Segoe UI", system-ui, sans-serif; --mono:"Azeret Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0b111a; --panel:#121a26; --ink:#e6edf6; --muted:#93a1b4; --line:#233044;
+  --night:#0e1520; --day:#1a2433; --work:#c99a2e; --work-ink:#1a1200; --both:#3cc4b3; --both-ink:#04211d; --sel:#e6edf6; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15.5px/1.5 var(--sans);
+  padding:32px max(16px,env(safe-area-inset-right,0px)) 56px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1100px;margin:0 auto}
+h1{font-weight:800;font-size:clamp(40px,7vw,64px);line-height:1;margin:0;letter-spacing:-.03em}
+.lede{color:var(--muted);max-width:60ch;margin:10px 0 24px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;min-width:0}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:16px}
+label.f{display:grid;gap:4px;font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+input,select{font:500 15px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--both);outline-offset:2px}
+button{font:600 14px var(--sans);border-radius:9px;padding:9px 14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.scroller{overflow-x:auto;margin:0 -4px;padding:0 4px}
+.board{min-width:760px;display:grid;gap:6px}
+.row{display:grid;grid-template-columns:180px 1fr;gap:10px;align-items:center}
+.city{display:grid;gap:2px;min-width:0}
+.city strong{display:flex;justify-content:space-between;gap:6px;align-items:center}
+.city strong button{border:0;background:none;padding:0 2px;font-size:17px;color:var(--muted)}
+.city small{color:var(--muted);font:12px var(--mono)}
+.city .hours{display:flex;gap:4px;align-items:center;font:12px var(--mono);color:var(--muted)}
+.city .hours input{width:52px;padding:3px 5px;font:12px var(--mono)}
+.cells{display:grid;grid-template-columns:repeat(24,1fr);gap:2px}
+.cells button{border:0;border-radius:5px;padding:7px 0;font:500 12px var(--mono);background:var(--night);color:var(--muted);cursor:pointer;min-width:0}
+.cells button.day{background:var(--day);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.cells button.work{background:var(--work);color:var(--work-ink)}
+.cells button.sel{outline:2px solid var(--sel);outline-offset:1px}
+.cells button .d{display:block;font-size:9px;opacity:.75}
+.sumrow .cells span{height:10px;border-radius:3px;background:var(--night)}
+.sumrow .cells span.all{background:var(--both)}
+.result{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;margin-top:20px}
+@media (max-width:760px){.result{grid-template-columns:1fr}}
+h2{font-size:18px;margin:0 0 10px}
+.big{font:800 28px/1.15 var(--sans);letter-spacing:-.01em}
+.big.ok{color:var(--both)}
+.note{font-size:13.5px;color:var(--muted)}
+.times{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+.times li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.times .t{font:600 16px var(--mono);font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-top:12px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+footer{margin-top:28px;font-size:13px;color:var(--muted)} footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Overlap</h1>
+<p class="lede">Add the cities you need to coordinate, set each one's working hours, and see where the days line up. Pick the actual date, because clocks change on different weekends in different countries.</p>
+
+<div class="panel">
+  <div class="controls">
+    <label class="f">Date<input id="date" type="date"></label>
+    <label class="f">Add a city<select id="add"></select></label>
+    <span class="note" style="flex:1;min-width:200px">The first city sets the timeline. Tap any hour to see that moment everywhere.</span>
+  </div>
+  <div class="scroller"><div class="board" id="board"></div></div>
+  <div class="legend"><span><i style="background:var(--work)"></i>Working hours</span><span><i style="background:var(--day);box-shadow:inset 0 0 0 1px var(--line)"></i>Awake (7:00–22:00)</span><span><i style="background:var(--night)"></i>Night</span><span><i style="background:var(--both)"></i>Everyone working</span></div>
+</div>
+
+<div class="result">
+  <section class="panel">
+    <h2>Shared working time</h2>
+    <div class="big" id="overlap"></div>
+    <p class="note" id="overlapNote"></p>
+  </section>
+  <section class="panel">
+    <h2 id="selTitle">Selected time</h2>
+    <ul class="times" id="times"></ul>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button id="copy" type="button">Copy for an invite</button><span class="note" id="msg" role="status"></span></div>
+  </section>
+</div>
+<footer>Part of <a href="../">Common Ground</a>. Time zone rules come from your browser's built-in database, so daylight saving changes are handled automatically.</footer>
+</div>
+
+<script>
+const ZONES=[["Auckland","Pacific/Auckland"],["Amsterdam","Europe/Amsterdam"],["Athens","Europe/Athens"],["Bangkok","Asia/Bangkok"],["Berlin","Europe/Berlin"],["Buenos Aires","America/Argentina/Buenos_Aires"],["Cape Town","Africa/Johannesburg"],["Chicago","America/Chicago"],["Dubai","Asia/Dubai"],["Dublin","Europe/Dublin"],["Hong Kong","Asia/Hong_Kong"],["Istanbul","Europe/Istanbul"],["Jakarta","Asia/Jakarta"],["Kraków","Europe/Warsaw"],["Lagos","Africa/Lagos"],["Lisbon","Europe/Lisbon"],["London","Europe/London"],["Los Angeles","America/Los_Angeles"],["Madrid","Europe/Madrid"],["Mexico City","America/Mexico_City"],["Mumbai","Asia/Kolkata"],["Nairobi","Africa/Nairobi"],["New York","America/New_York"],["Paris","Europe/Paris"],["Rome","Europe/Rome"],["São Paulo","America/Sao_Paulo"],["Seoul","Asia/Seoul"],["Singapore","Asia/Singapore"],["Split","Europe/Zagreb"],["Stockholm","Europe/Stockholm"],["Sydney","Australia/Sydney"],["Tel Aviv","Asia/Jerusalem"],["Tokyo","Asia/Tokyo"],["Toronto","America/Toronto"],["Vancouver","America/Vancouver"],["Warsaw","Europe/Warsaw"],["Zagreb","Europe/Zagreb"],["Zurich","Europe/Zurich"]];
+const $=s=>document.querySelector(s);
+const KEY="overlap.v1";
+let st; try{st=JSON.parse(localStorage.getItem(KEY))}catch{}
+if(!st||!Array.isArray(st.cities)) st={cities:[{n:"London",s:9,e:17.5},{n:"New York",s:9,e:17.5},{n:"São Paulo",s:9,e:18},{n:"Singapore",s:9,e:18}],sel:null};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch{}};
+const tz=n=>(ZONES.find(z=>z[0]===n)||[,"UTC"])[1];
+const now=new Date(); $("#date").value=new Date(now.getTime()-now.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+$("#add").innerHTML='<option value="">Choose…</option>'+ZONES.map(z=>`<option>${z[0]}</option>`).join("");
+
+function parts(ms,zone){ const p={}; new Intl.DateTimeFormat("en-GB",{timeZone:zone,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",weekday:"short"}).formatToParts(new Date(ms)).forEach(x=>p[x.type]=x.value); return p; }
+function offsetMin(ms,zone){ const p=parts(ms,zone); return (Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute)-ms)/6e4; }
+function startUTC(){ const [y,m,d]=$("#date").value.split("-").map(Number); const guess=Date.UTC(y,m-1,d); const z=tz(st.cities[0].n); let t=guess-offsetMin(guess,z)*6e4; t=guess-offsetMin(t,z)*6e4; return t; }
+const hm=h=>{const H=Math.floor(h),M=Math.round((h-H)*60);return String(H).padStart(2,"0")+":"+String(M).padStart(2,"0")};
+const toH=s=>{const [a,b]=String(s).split(":").map(Number);return (a||0)+(b||0)/60};
+function zoneLabel(zone,ms){ const o=offsetMin(ms,zone); const s=o<0?"−":"+"; const a=Math.abs(o); return `UTC${s}${Math.floor(a/60)}${a%60?":"+String(a%60).padStart(2,"0"):""}`; }
+
+function render(){
+  if(!st.cities.length){ $("#board").innerHTML='<p class="note">Add a city to start.</p>'; $("#overlap").textContent="–"; $("#times").innerHTML=""; save(); return; }
+  const t0=startUTC(); const allWork=Array(24).fill(true); let rows="";
+  st.cities.forEach((c,ci)=>{
+    const zone=tz(c.n); let cells="";
+    for(let h=0;h<24;h++){
+      const ms=t0+h*36e5, p=parts(ms,zone), lh=+p.hour+(+p.minute)/60;
+      const work=c.e>c.s?(lh>=c.s&&lh<c.e):(lh>=c.s||lh<c.e), day=lh>=7&&lh<22;
+      if(!work) allWork[h]=false;
+      const first=+p.hour===0||h===0;
+      cells+=`<button type="button" data-h="${h}" class="${work?"work":day?"day":""}${st.sel===h?" sel":""}" title="${p.weekday} ${p.hour}:${p.minute} in ${c.n}">${p.hour}${p.minute!=="00"?"<span class='d'>:"+p.minute+"</span>":first?"<span class='d'>"+p.weekday+"</span>":""}</button>`;
+    }
+    rows+=`<div class="row"><div class="city"><strong>${c.n}<button type="button" data-rm="${ci}" aria-label="Remove ${c.n}">×</button></strong><small>${zoneLabel(zone,t0+12*36e5)}</small><span class="hours"><input id="s${ci}" data-ci="${ci}" data-k="s" value="${hm(c.s)}" aria-label="${c.n} start">–<input id="e${ci}" data-ci="${ci}" data-k="e" value="${hm(c.e)}" aria-label="${c.n} end"></span></div><div class="cells">${cells}</div></div>`;
+  });
+  rows+=`<div class="row sumrow"><div class="city"><small>Everyone</small></div><div class="cells">${allWork.map(w=>`<span class="${w?"all":""}"></span>`).join("")}</div></div>`;
+  $("#board").innerHTML=rows;
+  const n=allWork.filter(Boolean).length;
+  if(n){ const first=allWork.indexOf(true), z0=tz(st.cities[0].n), p=parts(t0+first*36e5,z0);
+    $("#overlap").className="big ok"; $("#overlap").textContent=`${n} hour${n>1?"s":""} a day`;
+    $("#overlapNote").textContent=`Starting ${p.hour}:${p.minute} in ${st.cities[0].n}. Counted in whole hours on the timeline.`;
+    if(st.sel===null) st.sel=first;
+  } else { $("#overlap").className="big"; $("#overlap").textContent="No full hour where everyone is working";
+    $("#overlapNote").textContent="Try widening someone's hours, or pick a time in the light (awake) cells and rotate who takes the early or late slot."; }
+  const h=st.sel??9, ms=t0+h*36e5;
+  $("#times").innerHTML=st.cities.map(c=>{const p=parts(ms,tz(c.n));return `<li><span>${c.n}</span><span class="t">${p.weekday} ${p.hour}:${p.minute}</span></li>`}).join("");
+  $("#selTitle").textContent="Selected time";
+  save();
+}
+$("#board").addEventListener("click",e=>{const b=e.target.closest("button"); if(!b) return; if(b.dataset.rm){ st.cities.splice(+b.dataset.rm,1); st.sel=null; } else st.sel=+b.dataset.h; render();});
+$("#board").addEventListener("change",e=>{const i=e.target.dataset.ci; if(i===undefined) return; st.cities[+i][e.target.dataset.k]=toH(e.target.value); render();});
+$("#add").onchange=e=>{ if(e.target.value&&!st.cities.some(c=>c.n===e.target.value)) st.cities.push({n:e.target.value,s:9,e:17.5}); e.target.value=""; st.sel=null; render(); };
+$("#date").onchange=()=>{st.sel=null; render();};
+$("#copy").onclick=async()=>{ const ms=startUTC()+(st.sel??9)*36e5;
+  const t=st.cities.map(c=>{const p=parts(ms,tz(c.n));return `${p.hour}:${p.minute} ${c.n}`}).join(" · ");
+  const d=parts(ms,tz(st.cities[0].n)); const line=`${d.weekday} ${d.day}/${d.month}: ${t}`;
+  try{await navigator.clipboard.writeText(line); $("#msg").textContent="Copied.";}catch{$("#msg").textContent=line;} };
+render();
+</script>
+</body>
+</html>
